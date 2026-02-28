@@ -2,7 +2,7 @@
 
 An OpenWrt opkg package that provides automatic PWM fan control via the Linux kernel thermal framework, with a LuCI web interface for configuration.
 
-![Fan Control UI](https://raw.githubusercontent.com/bigmalloy/luci-app-fancontrol/main/screenshot.png)
+<img width="770" height="690" alt="image" src="https://github.com/user-attachments/assets/9ed5a3ff-195b-4393-8d83-531724ddd280" />
 
 ## Features
 
