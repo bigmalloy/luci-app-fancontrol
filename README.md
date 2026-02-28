@@ -2,6 +2,7 @@
 <img width="732" height="678" alt="image" src="https://github.com/user-attachments/assets/aa572003-22b1-48b8-a42d-bf340dd1b008" />
 
 An OpenWrt opkg package that provides automatic PWM fan control via the Linux kernel thermal framework, with a LuCI web interface for configuration.
+tested on OpenWrt 24.10.5 r29087
 
 ## Features
 
