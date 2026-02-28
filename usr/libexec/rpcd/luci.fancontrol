@@ -1,0 +1,68 @@
+#!/bin/sh
+CONF=/etc/fancontrol/fancontrol.conf
+
+case "$1" in
+  list)
+    echo '{"get_config":{},"set_config":{"config":"table"},"get_status":{},"service_start":{},"service_stop":{},"service_restart":{}}'
+  ;;
+  call)
+    case "$2" in
+      get_config)
+        THERMAL="/sys/class/thermal/thermal_zone0/temp"
+        PWM="/sys/class/hwmon/hwmon2/pwm1"
+        TEMP_OFF="58"; TEMP_HALF="73"; TEMP_FULL="77"; HYST="2"; POLL="10"
+        if [ -f "$CONF" ]; then
+          while IFS='=' read -r key val; do
+            case "$key" in
+              THERMAL)   THERMAL="$val"   ;; PWM)       PWM="$val"       ;;
+              TEMP_OFF)  TEMP_OFF="$val"  ;; TEMP_HALF) TEMP_HALF="$val" ;;
+              TEMP_FULL) TEMP_FULL="$val" ;; HYST)      HYST="$val"      ;;
+              POLL)      POLL="$val"      ;;
+            esac
+          done < "$CONF"
+        fi
+        printf '{"THERMAL":"%s","PWM":"%s","TEMP_OFF":"%s","TEMP_HALF":"%s","TEMP_FULL":"%s","HYST":"%s","POLL":"%s"}\n' \
+          "$THERMAL" "$PWM" "$TEMP_OFF" "$TEMP_HALF" "$TEMP_FULL" "$HYST" "$POLL"
+      ;;
+      set_config)
+        INPUT=$(cat)
+        # Extract from nested 'config' object that rpc.declare wraps params in
+        THERMAL=$(echo  "$INPUT" | jsonfilter -e '@.config.THERMAL'   2>/dev/null || echo "$INPUT" | jsonfilter -e '@.THERMAL')
+        PWM=$(echo      "$INPUT" | jsonfilter -e '@.config.PWM'       2>/dev/null || echo "$INPUT" | jsonfilter -e '@.PWM')
+        TEMP_OFF=$(echo  "$INPUT" | jsonfilter -e '@.config.TEMP_OFF'  2>/dev/null || echo "$INPUT" | jsonfilter -e '@.TEMP_OFF')
+        TEMP_HALF=$(echo "$INPUT" | jsonfilter -e '@.config.TEMP_HALF' 2>/dev/null || echo "$INPUT" | jsonfilter -e '@.TEMP_HALF')
+        TEMP_FULL=$(echo "$INPUT" | jsonfilter -e '@.config.TEMP_FULL' 2>/dev/null || echo "$INPUT" | jsonfilter -e '@.TEMP_FULL')
+        HYST=$(echo     "$INPUT" | jsonfilter -e '@.config.HYST'      2>/dev/null || echo "$INPUT" | jsonfilter -e '@.HYST')
+        POLL=$(echo     "$INPUT" | jsonfilter -e '@.config.POLL'      2>/dev/null || echo "$INPUT" | jsonfilter -e '@.POLL')
+        [ -z "$THERMAL"   ] && THERMAL="/sys/class/thermal/thermal_zone0/temp"
+        [ -z "$PWM"       ] && PWM="/sys/class/hwmon/hwmon2/pwm1"
+        [ -z "$TEMP_OFF"  ] && TEMP_OFF="58"
+        [ -z "$TEMP_HALF" ] && TEMP_HALF="73"
+        [ -z "$TEMP_FULL" ] && TEMP_FULL="77"
+        [ -z "$HYST"      ] && HYST="2"
+        [ -z "$POLL"      ] && POLL="10"
+        mkdir -p /etc/fancontrol
+        printf 'THERMAL=%s\nPWM=%s\nTEMP_OFF=%s\nTEMP_HALF=%s\nTEMP_FULL=%s\nHYST=%s\nPOLL=%s\n' \
+          "$THERMAL" "$PWM" "$TEMP_OFF" "$TEMP_HALF" "$TEMP_FULL" "$HYST" "$POLL" > "$CONF"
+        /etc/init.d/fancontrol restart >/dev/null 2>&1
+        echo '{"result":"ok"}'
+      ;;
+      get_status)
+        THERMAL="/sys/class/thermal/thermal_zone0/temp"; PWM="/sys/class/hwmon/hwmon2/pwm1"
+        [ -f "$CONF" ] && while IFS='=' read -r key val; do
+          [ "$key" = "THERMAL" ] && THERMAL="$val"
+          [ "$key" = "PWM" ]     && PWM="$val"
+        done < "$CONF"
+        TEMP_RAW=$(cat "$THERMAL" 2>/dev/null)
+        PWM_VAL=$(cat "$PWM" 2>/dev/null)
+        /etc/init.d/fancontrol status >/dev/null 2>&1; RUNNING=$?
+        TEMP_C=""; [ -n "$TEMP_RAW" ] && TEMP_C=$(( TEMP_RAW / 1000 ))
+        printf '{"running":%s,"temp_c":"%s","pwm":"%s"}\n' \
+          "$([ $RUNNING -eq 0 ] && echo true || echo false)" "$TEMP_C" "$PWM_VAL"
+      ;;
+      service_start)   /etc/init.d/fancontrol start   >/dev/null 2>&1; echo '{"result":"ok"}' ;;
+      service_stop)    /etc/init.d/fancontrol stop    >/dev/null 2>&1; echo '{"result":"ok"}' ;;
+      service_restart) /etc/init.d/fancontrol restart >/dev/null 2>&1; echo '{"result":"ok"}' ;;
+    esac
+  ;;
+esac

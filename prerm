@@ -1,0 +1,6 @@
+#!/bin/sh
+[ -x /etc/init.d/fancontrol ] && {
+  /etc/init.d/fancontrol stop
+  /etc/init.d/fancontrol disable
+}
+exit 0

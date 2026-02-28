@@ -1,0 +1,10 @@
+{
+	"admin/services/fancontrol": {
+		"title": "Fan Control",
+		"order": 60,
+		"action": {
+			"type": "view",
+			"path": "fancontrol/fancontrol"
+		}
+	}
+}

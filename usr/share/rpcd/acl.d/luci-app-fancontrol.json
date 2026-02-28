@@ -1,0 +1,23 @@
+{
+	"luci-app-fancontrol": {
+		"description": "LuCI Fan Control",
+		"read": {
+			"ubus": {
+				"luci.fancontrol": [
+					"get_config",
+					"get_status"
+				]
+			}
+		},
+		"write": {
+			"ubus": {
+				"luci.fancontrol": [
+					"set_config",
+					"service_start",
+					"service_stop",
+					"service_restart"
+				]
+			}
+		}
+	}
+}

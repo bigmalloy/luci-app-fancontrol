@@ -1,0 +1,97 @@
+#!/bin/sh
+
+CONF=/etc/fancontrol/fancontrol.conf
+
+load_conf() {
+  THERMAL="/sys/class/thermal/thermal_zone0/temp"
+  THERMAL_ZONE="thermal_zone0"
+  TEMP_OFF="58"; TEMP_HALF="73"; TEMP_FULL="77"; HYST="2"; POLL="10"
+  [ -f "$CONF" ] && . "$CONF"
+}
+
+load_conf
+
+# Find the thermal zone that has the pwm-fan as a cooling device
+find_thermal_zone() {
+  for zone in /sys/class/thermal/thermal_zone*; do
+    for cdev in "${zone}"/cdev*; do
+      [ -e "${cdev}" ] || continue
+      CDEV_NAME=$(readlink "$cdev" 2>/dev/null | xargs basename 2>/dev/null)
+      if [ -n "$CDEV_NAME" ]; then
+        TYPE=$(cat "/sys/class/thermal/${CDEV_NAME}/type" 2>/dev/null)
+        if [ "$TYPE" = "pwm-fan" ]; then
+          basename "$zone"
+          return
+        fi
+      fi
+    done
+  done
+  echo "thermal_zone0"
+}
+
+ZONE=$(find_thermal_zone)
+ZONE_PATH="/sys/class/thermal/${ZONE}"
+
+# Count trip points
+count_trips() {
+  local count=0
+  while [ -f "${ZONE_PATH}/trip_point_${count}_temp" ]; do
+    count=$(( count + 1 ))
+  done
+  echo $count
+}
+
+NTRIPS=$(count_trips)
+logger -t fancontrol "Using thermal zone: $ZONE with $NTRIPS trip points"
+
+if [ "$NTRIPS" -eq 0 ]; then
+  logger -t fancontrol "ERROR: No trip points found in $ZONE"
+  exit 1
+fi
+
+# Make sure policy is step_wise (kernel manages fan automatically)
+echo step_wise > "${ZONE_PATH}/policy" 2>/dev/null
+
+logger -t fancontrol "Fan control started - kernel thermal mode (off<${TEMP_OFF}C half<${TEMP_HALF}C full>${TEMP_FULL}C)"
+
+apply_trip_points() {
+  # Trip points are ordered highest to lowest (trip 0 = hottest)
+  # We have NTRIPS trip points spanning from TEMP_OFF to TEMP_FULL
+  # Spread them evenly across the range
+  local range=$(( TEMP_FULL - TEMP_OFF ))
+  local i=0
+  while [ $i -lt $NTRIPS ]; do
+    # trip 0 = TEMP_FULL, trip N-1 = TEMP_OFF
+    local trip_temp=$(( TEMP_FULL - ( range * i / ( NTRIPS - 1 ) ) ))
+    local trip_temp_milli=$(( trip_temp * 1000 ))
+    local trip_file="${ZONE_PATH}/trip_point_${i}_temp"
+    if [ -f "$trip_file" ]; then
+      echo "$trip_temp_milli" > "$trip_file" 2>/dev/null && \
+        logger -t fancontrol "Set trip $i = ${trip_temp}C" || \
+        logger -t fancontrol "WARNING: Could not write trip $i (read-only)"
+    fi
+    i=$(( i + 1 ))
+  done
+}
+
+LAST_CONF_HASH=""
+
+while true; do
+  load_conf
+
+  # Only reapply trip points if config changed
+  CONF_HASH="${TEMP_OFF}${TEMP_HALF}${TEMP_FULL}${HYST}"
+  if [ "$CONF_HASH" != "$LAST_CONF_HASH" ]; then
+    apply_trip_points
+    LAST_CONF_HASH="$CONF_HASH"
+  fi
+
+  TEMP=$(cat "$THERMAL" 2>/dev/null)
+  TEMP_C=$(( ${TEMP:-0} / 1000 ))
+
+  # Log current state for UI
+  CUR_STATE=$(cat "${ZONE_PATH}/../cooling_device0/cur_state" 2>/dev/null || echo "?")
+  PWM_VAL=$(cat /sys/class/hwmon/hwmon2/pwm1 2>/dev/null || echo "?")
+
+  sleep "$POLL"
+done
