@@ -1,0 +1,14 @@
+#!/bin/sh
+
+pre_deinstall() {
+	# Stop and disable the service before removal
+	if [ -f /etc/init.d/fancontrol ]; then
+		/etc/init.d/fancontrol stop
+		/etc/init.d/fancontrol disable
+	fi
+
+	# Restart rpcd to deregister the ubus object
+	if [ -f /etc/init.d/rpcd ]; then
+		/etc/init.d/rpcd restart
+	fi
+}
