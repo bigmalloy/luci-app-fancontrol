@@ -2,7 +2,7 @@
 set -e
 
 PKG="luci-app-fancontrol"
-VER="2.3.0"
+VER="2.0.0"
 OUT="${PKG}_${VER}_all.ipk"
 
 echo "Building $OUT..."
