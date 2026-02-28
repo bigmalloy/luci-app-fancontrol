@@ -121,7 +121,7 @@ MIT
 OpenWrt 25.12 and later use `apk` instead of `opkg`. Build the `.apk` package:
 
 ```sh
-git clone https://github.com/YOUR_USERNAME/luci-app-fancontrol.git
+git clone https://github.com/bigmalloy/luci-app-fancontrol.git
 cd luci-app-fancontrol
 chmod +x build-apk.sh
 ./build-apk.sh
