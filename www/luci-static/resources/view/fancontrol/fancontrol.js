@@ -4,11 +4,8 @@
 'require ui';
 'require poll';
 
-var callGetConfig  = rpc.declare({ object: 'luci.fancontrol', method: 'get_config',      expect: {} });
-var callGetStatus  = rpc.declare({ object: 'luci.fancontrol', method: 'get_status',      expect: {} });
-var callSvcStart   = rpc.declare({ object: 'luci.fancontrol', method: 'service_start',   expect: {} });
-var callSvcStop    = rpc.declare({ object: 'luci.fancontrol', method: 'service_stop',    expect: {} });
-var callSvcRestart = rpc.declare({ object: 'luci.fancontrol', method: 'service_restart', expect: {} });
+var callGetConfig  = rpc.declare({ object: 'luci.fancontrol', method: 'get_config',  expect: {} });
+var callGetStatus  = rpc.declare({ object: 'luci.fancontrol', method: 'get_status',  expect: {} });
 
 function callSetConfig(cfg) {
 	var sid = rpc.getSessionID();
@@ -16,17 +13,11 @@ function callSetConfig(cfg) {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify([{
-			jsonrpc: '2.0',
-			id: 1,
-			method: 'call',
+			jsonrpc: '2.0', id: 1, method: 'call',
 			params: [ sid, 'luci.fancontrol', 'set_config', cfg ]
 		}])
-	}).then(function(r) {
-		return r.json();
-	}).then(function(r) {
-		if (r && r[0] && r[0].result && r[0].result[0] === 0) {
-			return r[0].result[1];
-		}
+	}).then(function(r) { return r.json(); }).then(function(r) {
+		if (r && r[0] && r[0].result && r[0].result[0] === 0) return r[0].result[1];
 		throw new Error('ubus call failed');
 	});
 }
@@ -34,47 +25,42 @@ function callSetConfig(cfg) {
 function fanLabel(pwm) {
 	if (pwm == null || pwm === '') return 'Unknown';
 	var v = parseInt(pwm);
-	if (v === 0) return 'Off';
+	if (v === 0)  return 'Off';
+	if (v <= 63)  return 'Low';
 	if (v <= 127) return 'Half speed';
+	if (v <= 191) return 'High';
 	return 'Full speed';
 }
 
 function updateStatusUI(status) {
 	var running = status.running === true || status.running === 'true';
 	var temp = status.temp_c || 'N/A';
-	var pwm = status.pwm || 'N/A';
-	var dot = document.getElementById('fc-svc-dot');
-	var svc = document.getElementById('fc-svc-val');
+	var pwm  = status.pwm   || 'N/A';
+	var dot   = document.getElementById('fc-svc-dot');
+	var svc   = document.getElementById('fc-svc-val');
 	var tmpEl = document.getElementById('fc-temp-val');
 	var fanEl = document.getElementById('fc-fan-val');
 	var pwmEl = document.getElementById('fc-pwm-val');
-	if (dot) dot.style.color = running ? '#4ade80' : '#f87171';
-	if (svc) svc.textContent = running ? 'Running' : 'Stopped';
+	if (dot)   dot.style.color   = running ? '#4ade80' : '#f87171';
+	if (svc)   svc.textContent   = running ? 'Running' : 'Stopped';
 	if (tmpEl) tmpEl.textContent = temp !== 'N/A' ? temp + ' \u00b0C' : 'N/A';
 	if (fanEl) fanEl.textContent = fanLabel(pwm);
 	if (pwmEl) pwmEl.textContent = String(pwm);
 }
 
-function getVal(id) {
-	return document.getElementById('fc-' + id).value.trim();
-}
+function getVal(id) { return document.getElementById('fc-' + id).value.trim(); }
 
 function numInput(id, val, min, max) {
 	return E('input', {
-		id: 'fc-' + id,
-		type: 'number',
-		value: String(val),
-		min: String(min),
-		max: String(max),
+		id: 'fc-' + id, type: 'number', value: String(val),
+		min: String(min), max: String(max),
 		style: 'width:80px;background:#0f172a;color:#f1f5f9;border:1px solid #334155;border-radius:6px;padding:6px 10px;font-size:14px;text-align:center'
 	});
 }
 
 function textInput(id, val) {
 	return E('input', {
-		id: 'fc-' + id,
-		type: 'text',
-		value: String(val),
+		id: 'fc-' + id, type: 'text', value: String(val),
 		style: 'width:280px;background:#0f172a;color:#f1f5f9;border:1px solid #334155;border-radius:6px;padding:6px 10px;font-size:12px;font-family:monospace'
 	});
 }
@@ -87,14 +73,6 @@ function row(label, desc, input) {
 		]),
 		input
 	]);
-}
-
-function mkbtn(label, bg, onclick) {
-	return E('button', {
-		type: 'button',
-		click: onclick,
-		style: 'background:' + bg + ';color:#fff;border:none;border-radius:6px;padding:8px 18px;font-size:13px;cursor:pointer;font-weight:600'
-	}, label);
 }
 
 function card(children) {
@@ -113,11 +91,8 @@ function doSave() {
 		return;
 	}
 
-	var saveBtn = document.getElementById('fc-save-btn');
-	if (saveBtn) {
-		saveBtn.disabled = true;
-		saveBtn.textContent = 'Saving...';
-	}
+	var btn = document.getElementById('fc-save-btn');
+	if (btn) { btn.disabled = true; btn.textContent = 'Saving\u2026'; }
 
 	callSetConfig({
 		THERMAL:   getVal('THERMAL'),
@@ -133,10 +108,7 @@ function doSave() {
 	}).then(updateStatusUI).catch(function(err) {
 		ui.addNotification(null, E('p', {}, 'Error: ' + (err.message || err)), 'error');
 	}).then(function() {
-		if (saveBtn) {
-			saveBtn.disabled = false;
-			saveBtn.textContent = 'Save';
-		}
+		if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
 	});
 }
 
@@ -158,19 +130,38 @@ return view.extend({
 		var PWM       = cfg.PWM       || '/sys/class/hwmon/hwmon2/pwm1';
 
 		var running = status.running === true || status.running === 'true';
-		var temp = status.temp_c || 'N/A';
-		var pwm  = status.pwm   || 'N/A';
+		var temp    = status.temp_c || 'N/A';
+		var pwm     = status.pwm   || 'N/A';
 
-		poll.add(function() {
-			return callGetStatus().then(updateStatusUI);
-		}, 10);
+		poll.add(function() { return callGetStatus().then(updateStatusUI); }, 10);
 
+		// Hide LuCI's footer - we provide our own Save button
 		requestAnimationFrame(function() {
 			var footer = document.querySelector('.cbi-page-actions');
 			if (footer) footer.style.display = 'none';
 		});
 
+		var advancedVisible = false;
+		var advancedCard = E('div', { style: 'display:none' }, [
+			card([
+				row('Poll Interval (seconds)', 'How often the kernel checks temperature', numInput('POLL',    POLL,    1, 60)),
+				row('Thermal Zone Path',       'sysfs path to temperature sensor',        textInput('THERMAL', THERMAL)),
+				row('PWM Device Path',         'sysfs path to fan PWM control',           textInput('PWM',     PWM))
+			])
+		]);
+
+		var advancedToggle = E('button', {
+			type: 'button',
+			style: 'background:none;border:none;color:#64748b;font-size:13px;cursor:pointer;padding:0;margin-bottom:12px;display:flex;align-items:center;gap:6px',
+			click: function() {
+				advancedVisible = !advancedVisible;
+				advancedCard.style.display = advancedVisible ? 'block' : 'none';
+				this.textContent = (advancedVisible ? '\u25bc' : '\u25ba') + ' Advanced';
+			}
+		}, '\u25ba Advanced');
+
 		return E('div', { style: 'max-width:660px' }, [
+			// Status card
 			E('div', { style: 'background:#0f172a;border:1px solid #334155;border-radius:10px;padding:16px 20px;margin-bottom:24px;font-family:monospace;font-size:13px' }, [
 				E('table', { style: 'width:100%;border-collapse:collapse' }, [
 					E('tr', {}, [
@@ -196,32 +187,26 @@ return view.extend({
 				])
 			]),
 
+			// Thresholds
 			E('h3', { style: 'margin:0 0 10px;font-size:15px' }, 'Temperature Thresholds'),
 			card([
 				row('Fan Off Below (\u00b0C)',    'Fan is fully off below this temperature',           numInput('TEMP_OFF',  TEMP_OFF,  0, 120)),
-				row('Half Speed Below (\u00b0C)', 'Fan runs at 50% between Off and this temperature',  numInput('TEMP_HALF', TEMP_HALF, 0, 120)),
+				row('Half Speed Below (\u00b0C)', 'Upper boundary for graduated speed range',          numInput('TEMP_HALF', TEMP_HALF, 0, 120)),
 				row('Full Speed Above (\u00b0C)', 'Fan runs at 100% above this temperature',           numInput('TEMP_FULL', TEMP_FULL, 0, 120)),
 				row('Hysteresis (\u00b0C)',       'Dead band to prevent rapid toggling at boundaries', numInput('HYST',      HYST,      0, 20))
 			]),
 
-			E('h3', { style: 'margin:0 0 10px;font-size:15px' }, 'Advanced'),
-			card([
-				row('Poll Interval (seconds)', 'How often to check temperature',   numInput('POLL',    POLL,    1, 60)),
-				row('Thermal Zone Path',       'sysfs path to temperature sensor', textInput('THERMAL', THERMAL)),
-				row('PWM Device Path',         'sysfs path to fan PWM control',    textInput('PWM',     PWM))
-			]),
+			// Advanced collapsible
+			advancedToggle,
+			advancedCard,
 
-			E('div', { style: 'display:flex;gap:10px;flex-wrap:wrap;margin-top:8px' }, [
-				E('button', {
-					id: 'fc-save-btn',
-					type: 'button',
-					click: doSave,
-					style: 'background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 18px;font-size:13px;cursor:pointer;font-weight:600'
-				}, 'Save'),
-				mkbtn('Start',   '#16a34a', function() { callSvcStart().then(function()   { return callGetStatus(); }).then(updateStatusUI); }),
-				mkbtn('Stop',    '#dc2626', function() { callSvcStop().then(function()    { return callGetStatus(); }).then(updateStatusUI); }),
-				mkbtn('Restart', '#7c3aed', function() { callSvcRestart().then(function() { return callGetStatus(); }).then(updateStatusUI); })
-			])
+			// Our own Save button
+			E('button', {
+				id: 'fc-save-btn',
+				type: 'button',
+				click: doSave,
+				style: 'background:#2563eb;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:13px;font-weight:600;cursor:pointer;margin-top:4px'
+			}, 'Save')
 		]);
 	},
 
