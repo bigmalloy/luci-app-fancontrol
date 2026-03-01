@@ -23,10 +23,15 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "${SCRIPT_DIR}/output"
 
+HOST_UID="$(id -u)"
+HOST_GID="$(id -g)"
+
 docker run --rm \
   -v "${SCRIPT_DIR}:/pkg-src:ro" \
   -v "${SCRIPT_DIR}/output:/output" \
   --user root \
+  -e HOST_UID="${HOST_UID}" \
+  -e HOST_GID="${HOST_GID}" \
   "${SDK_IMAGE}" \
   /bin/bash -c '
     set -e
@@ -54,6 +59,7 @@ docker run --rm \
     echo "--- Copying output ---"
     find bin/ -name "luci-app-fancontrol*" -type f | tee /tmp/found.txt
     cat /tmp/found.txt | xargs -I{} cp {} /output/
+    chown "${HOST_UID}:${HOST_GID}" /output/luci-app-fancontrol*
     ls -lh /output/
   '
 
