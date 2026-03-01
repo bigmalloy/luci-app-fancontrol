@@ -34,6 +34,8 @@ case "$1" in
         TEMP_FULL=$(echo "$INPUT" | jsonfilter -e '@.config.TEMP_FULL' 2>/dev/null || echo "$INPUT" | jsonfilter -e '@.TEMP_FULL')
         HYST=$(echo     "$INPUT" | jsonfilter -e '@.config.HYST'      2>/dev/null || echo "$INPUT" | jsonfilter -e '@.HYST')
         POLL=$(echo     "$INPUT" | jsonfilter -e '@.config.POLL'      2>/dev/null || echo "$INPUT" | jsonfilter -e '@.POLL')
+        THERMAL=$(printf '%s' "$THERMAL" | tr -d '\n\r')
+        PWM=$(printf '%s' "$PWM" | tr -d '\n\r')
         [ -z "$THERMAL"   ] && THERMAL="/sys/class/thermal/thermal_zone0/temp"
         [ -z "$PWM"       ] && PWM="/sys/class/hwmon/hwmon2/pwm1"
         [ -z "$TEMP_OFF"  ] && TEMP_OFF="58"
