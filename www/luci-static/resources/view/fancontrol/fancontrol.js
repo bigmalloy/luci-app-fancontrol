@@ -23,8 +23,9 @@ function callSetConfig(cfg) {
 }
 
 function fanLabel(pwm) {
-	if (pwm == null || pwm === '') return 'Unknown';
+	if (pwm == null || pwm === '' || pwm === 'N/A') return 'Unknown';
 	var v = parseInt(pwm);
+	if (isNaN(v)) return 'Unknown';
 	if (v === 0)  return 'Off';
 	if (v <= 63)  return 'Low';
 	if (v <= 127) return 'Half speed';
@@ -86,8 +87,20 @@ function doSave() {
 	var TEMP_HALF = getVal('TEMP_HALF');
 	var TEMP_FULL = getVal('TEMP_FULL');
 
-	if (parseInt(TEMP_OFF) >= parseInt(TEMP_HALF) || parseInt(TEMP_HALF) >= parseInt(TEMP_FULL)) {
+	var iOFF = parseInt(TEMP_OFF), iHALF = parseInt(TEMP_HALF), iFULL = parseInt(TEMP_FULL);
+	if (isNaN(iOFF) || isNaN(iHALF) || isNaN(iFULL) || iOFF >= iHALF || iHALF >= iFULL) {
 		ui.addNotification(null, E('p', {}, 'Thresholds must be in order: Off < Half Speed < Full Speed'), 'error');
+		return;
+	}
+
+	var THERMAL = getVal('THERMAL');
+	var PWM     = getVal('PWM');
+	if (!THERMAL.startsWith('/') || THERMAL.includes('\n')) {
+		ui.addNotification(null, E('p', {}, 'Thermal zone path must be an absolute path'), 'error');
+		return;
+	}
+	if (!PWM.startsWith('/') || PWM.includes('\n')) {
+		ui.addNotification(null, E('p', {}, 'PWM device path must be an absolute path'), 'error');
 		return;
 	}
 
@@ -95,8 +108,8 @@ function doSave() {
 	if (btn) { btn.disabled = true; btn.textContent = 'Saving\u2026'; }
 
 	callSetConfig({
-		THERMAL:   getVal('THERMAL'),
-		PWM:       getVal('PWM'),
+		THERMAL:   THERMAL,
+		PWM:       PWM,
 		TEMP_OFF:  TEMP_OFF,
 		TEMP_HALF: TEMP_HALF,
 		TEMP_FULL: TEMP_FULL,

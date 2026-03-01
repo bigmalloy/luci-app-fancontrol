@@ -44,8 +44,8 @@ count_trips() {
 NTRIPS=$(count_trips)
 logger -t fancontrol "Using thermal zone: $ZONE with $NTRIPS trip points"
 
-if [ "$NTRIPS" -eq 0 ]; then
-  logger -t fancontrol "ERROR: No trip points found in $ZONE"
+if [ "$NTRIPS" -lt 2 ]; then
+  logger -t fancontrol "ERROR: Need at least 2 trip points in $ZONE (found $NTRIPS)"
   exit 1
 fi
 
@@ -85,13 +85,6 @@ while true; do
     apply_trip_points
     LAST_CONF_HASH="$CONF_HASH"
   fi
-
-  TEMP=$(cat "$THERMAL" 2>/dev/null)
-  TEMP_C=$(( ${TEMP:-0} / 1000 ))
-
-  # Log current state for UI
-  CUR_STATE=$(cat "${ZONE_PATH}/../cooling_device0/cur_state" 2>/dev/null || echo "?")
-  PWM_VAL=$(cat /sys/class/hwmon/hwmon2/pwm1 2>/dev/null || echo "?")
 
   sleep "$POLL"
 done
