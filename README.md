@@ -87,7 +87,7 @@ www/
 ## Building From Source
 
 ```sh
-git clone https://github.com/YOUR_USERNAME/luci-app-fancontrol.git
+git clone https://github.com/bigmalloy/luci-app-fancontrol.git
 cd luci-app-fancontrol
 chmod +x build.sh
 ./build.sh
