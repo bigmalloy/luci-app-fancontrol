@@ -2,7 +2,7 @@
 
 An OpenWrt opkg package that provides automatic PWM fan control via the Linux kernel thermal framework, with a LuCI web interface for configuration.
 
-![Fan Control UI](https://forum.openwrt.org/uploads/default/optimized/3X/9/0/90a8a293295a71a5475b75063ba80ccd566e9279_2_427x500.png "Interface")
+![Fan Control UI](https://raw.githubusercontent.com/bigmalloy/luci-app-fancontrol/main/screenshot.png)
 
 ## Features
 
@@ -145,4 +145,30 @@ addgroup $USER abuild
 abuild-keygen -a -i
 # Build
 abuild -r
+```
+
+## Building a proper APK for OpenWrt 25+ (via OpenWrt buildroot)
+
+The OpenWrt 25+ APK format uses a binary database format (`apk mkpkg`) that cannot be built with a simple shell script — it requires the OpenWrt build system's host tools. Use the included `openwrt-feed/` directory:
+
+```sh
+# 1. Clone the OpenWrt buildroot
+git clone https://git.openwrt.org/openwrt/openwrt.git
+cd openwrt
+
+# 2. Copy the feed into the package tree
+cp -r /path/to/luci-app-fancontrol/openwrt-feed package/luci-app-fancontrol
+
+# 3. Update feeds and select the package
+./scripts/feeds update -a
+./scripts/feeds install -a
+make menuconfig
+# Navigate to: LuCI → Applications → luci-app-fancontrol → [M]
+
+# 4. Build just this package
+make package/luci-app-fancontrol/compile V=s
+
+# 5. Find the output
+# OpenWrt 24 (ipk): bin/packages/<arch>/base/luci-app-fancontrol_2.3.0-1_all.ipk
+# OpenWrt 25 (apk): bin/packages/<arch>/base/luci-app-fancontrol-2.3.0-r1.apk
 ```
