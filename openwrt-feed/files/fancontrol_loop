@@ -49,7 +49,7 @@ count_trips() {
 }
 
 apply_trip_points() {
-  # Trip points are ordered highest to lowest (trip 0 = hottest)
+  # Trip points are ordered highest to lowest (trip 0 = hottest) on this platform
   # Spread them evenly from TEMP_FULL down to TEMP_OFF
   local range=$(( TEMP_FULL - TEMP_OFF ))
   local i=0
@@ -92,6 +92,12 @@ while true; do
 
     # Set policy to step_wise so the kernel manages fan automatically
     echo step_wise > "${ZONE_PATH}/policy" 2>/dev/null
+
+    # Ensure PWM is in auto mode so the thermal framework can drive it.
+    # A previous install may have left pwm1_enable=1 (manual), which blocks
+    # the step_wise governor from changing the actual PWM output.
+    PWM_ENABLE="${PWM}_enable"
+    [ -w "$PWM_ENABLE" ] && echo 2 > "$PWM_ENABLE" 2>/dev/null
 
     logger -t fancontrol "Fan control started - kernel thermal mode (off<${TEMP_OFF}C half<${TEMP_HALF}C full>${TEMP_FULL}C)"
     apply_trip_points
