@@ -10,7 +10,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-fancontrol
-PKG_VERSION:=3.0.0
+PKG_VERSION:=3.0.1
 PKG_RELEASE:=1
 
 PKG_MAINTAINER:=Your Name <you@example.com>
@@ -81,7 +81,7 @@ define Package/luci-app-fancontrol/postinst
 if [ -f /etc/fancontrol/fancontrol.conf ]; then
   THERMAL="/sys/class/thermal/thermal_zone0/temp"
   PWM="/sys/class/hwmon/hwmon2/pwm1"
-  TEMP_OFF=50; TEMP_HALF=65; TEMP_FULL=75; HYST=2; POLL=10
+  TEMP_OFF=60; TEMP_HALF=65; TEMP_FULL=75; HYST=2; POLL=10
   . /etc/fancontrol/fancontrol.conf 2>/dev/null || true
   uci -q set fancontrol.settings=fancontrol
   uci -q set "fancontrol.settings.thermal=${THERMAL}"

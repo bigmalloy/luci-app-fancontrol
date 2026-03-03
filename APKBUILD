@@ -1,6 +1,6 @@
 # Maintainer: OpenWrt User
 pkgname=luci-app-fancontrol
-pkgver=2.3.0
+pkgver=3.0.1
 pkgrel=0
 pkgdesc="Automatic PWM fan control with LuCI web interface"
 url="https://github.com/YOUR_USERNAME/luci-app-fancontrol"

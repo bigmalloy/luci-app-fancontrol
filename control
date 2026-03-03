@@ -1,5 +1,5 @@
 Package: luci-app-fancontrol
-Version: 3.0.0
+Version: 3.0.1
 Depends: libc, luci-base, rpcd, jsonfilter, uci, kmod-hwmon-core, kmod-hwmon-pwmfan
 Architecture: all
 Maintainer: OpenWrt User

@@ -30,7 +30,7 @@ find_pwm_device() {
 load_uci() {
   THERMAL=$(uci -q get fancontrol.settings.thermal)
   PWM=$(uci -q get fancontrol.settings.pwm)
-  TEMP_OFF=$(uci -q get fancontrol.settings.temp_off);   TEMP_OFF=${TEMP_OFF:-50}
+  TEMP_OFF=$(uci -q get fancontrol.settings.temp_off);   TEMP_OFF=${TEMP_OFF:-60}
   TEMP_HALF=$(uci -q get fancontrol.settings.temp_half); TEMP_HALF=${TEMP_HALF:-65}
   TEMP_FULL=$(uci -q get fancontrol.settings.temp_full); TEMP_FULL=${TEMP_FULL:-75}
   HYST=$(uci -q get fancontrol.settings.hyst);           HYST=${HYST:-2}
