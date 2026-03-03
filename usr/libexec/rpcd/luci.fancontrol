@@ -75,12 +75,25 @@ case "$1" in
         PWM=$(uci -q get fancontrol.settings.pwm)
         [ -z "$THERMAL" ] && THERMAL="/sys/class/thermal/$(find_thermal_zone)/temp"
         [ -z "$PWM"     ] && PWM=$(find_pwm_device)
+        ZONE=$(echo "$THERMAL" | sed 's|/sys/class/thermal/\([^/]*\)/.*|\1|')
         TEMP_RAW=$(cat "$THERMAL" 2>/dev/null)
         PWM_VAL=$(cat "$PWM" 2>/dev/null)
         /etc/init.d/fancontrol status >/dev/null 2>&1; RUNNING=$?
         TEMP_C=""; [ -n "$TEMP_RAW" ] && TEMP_C=$(( TEMP_RAW / 1000 ))
-        printf '{"running":%s,"temp_c":"%s","pwm":"%s"}\n' \
-          "$([ $RUNNING -eq 0 ] && echo true || echo false)" "$TEMP_C" "$PWM_VAL"
+        CUR_STATE=""; MAX_STATE=""
+        for cdev in /sys/class/thermal/${ZONE}/cdev*; do
+          [ -e "$cdev" ] || continue
+          CDEV_NAME=$(readlink "$cdev" 2>/dev/null | xargs basename 2>/dev/null)
+          [ -n "$CDEV_NAME" ] || continue
+          CDEV_TYPE=$(cat "/sys/class/thermal/${CDEV_NAME}/type" 2>/dev/null)
+          if [ "$CDEV_TYPE" = "pwm-fan" ]; then
+            CUR_STATE=$(cat "/sys/class/thermal/${CDEV_NAME}/cur_state" 2>/dev/null)
+            MAX_STATE=$(cat "/sys/class/thermal/${CDEV_NAME}/max_state" 2>/dev/null)
+            break
+          fi
+        done
+        printf '{"running":%s,"temp_c":"%s","pwm":"%s","cur_state":"%s","max_state":"%s"}\n' \
+          "$([ $RUNNING -eq 0 ] && echo true || echo false)" "$TEMP_C" "$PWM_VAL" "$CUR_STATE" "$MAX_STATE"
       ;;
       list_devices)
         # Enumerate thermal zones

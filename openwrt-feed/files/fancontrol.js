@@ -23,21 +23,23 @@ function callSetConfig(cfg) {
 	});
 }
 
-function fanLabel(pwm) {
-	if (pwm == null || pwm === '' || pwm === 'N/A') return 'Unknown';
-	var v = parseInt(pwm);
-	if (isNaN(v)) return 'Unknown';
-	if (v === 0)  return 'Off';
-	if (v <= 63)  return 'Low';
-	if (v <= 127) return 'Half speed';
-	if (v <= 191) return 'High';
-	return 'Full speed';
+function fanLabel(curState, maxState) {
+	var cs = parseInt(curState);
+	var ms = parseInt(maxState);
+	if (isNaN(cs) || isNaN(ms) || ms <= 0) return 'Unknown';
+	if (cs <= 0)       return 'Off';
+	if (cs >= ms)      return 'Full speed';
+	if (cs * 3 <= ms)      return 'Low';    // <= 1/3
+	if (cs * 3 <= ms * 2)  return 'Medium'; // <= 2/3
+	return 'High';
 }
 
 function updateStatusUI(status) {
 	var running = status.running === true || status.running === 'true';
-	var temp = status.temp_c || 'N/A';
-	var pwm  = status.pwm   || 'N/A';
+	var temp     = status.temp_c    || 'N/A';
+	var pwm      = status.pwm       || 'N/A';
+	var curState = status.cur_state || '';
+	var maxState = status.max_state || '';
 	var dot   = document.getElementById('fc-svc-dot');
 	var svc   = document.getElementById('fc-svc-val');
 	var tmpEl = document.getElementById('fc-temp-val');
@@ -46,7 +48,7 @@ function updateStatusUI(status) {
 	if (dot)   dot.style.color   = running ? '#5cb85c' : '#d9534f';
 	if (svc)   svc.textContent   = running ? 'Running' : 'Stopped';
 	if (tmpEl) tmpEl.textContent = temp !== 'N/A' ? temp + ' \u00b0C' : 'N/A';
-	if (fanEl) fanEl.textContent = fanLabel(pwm);
+	if (fanEl) fanEl.textContent = fanLabel(curState, maxState);
 	if (pwmEl) pwmEl.textContent = String(pwm);
 }
 
@@ -162,9 +164,11 @@ return view.extend({
 		var cfgThermal   = cfg.thermal || '';
 		var cfgPwm       = cfg.pwm    || '';
 
-		var running   = status.running === true || status.running === 'true';
-		var statusTemp = status.temp_c || 'N/A';
-		var statusPwm  = status.pwm   || 'N/A';
+		var running      = status.running === true || status.running === 'true';
+		var statusTemp   = status.temp_c    || 'N/A';
+		var statusPwm    = status.pwm       || 'N/A';
+		var statusCs     = status.cur_state || '';
+		var statusMs     = status.max_state || '';
 
 		poll.add(function() { return callGetStatus().then(updateStatusUI); }, 10);
 
@@ -174,7 +178,7 @@ return view.extend({
 			if (footer) footer.style.display = 'none';
 		});
 
-		// Build thermal zone dropdown options (\u2605 marks zones with pwm-fan cooling device)
+		// Build thermal zone dropdown options (★ marks zones with pwm-fan cooling device)
 		var thermalZones = devices.thermal_zones || [];
 		var thermalOptions = [{ value: '', label: '(auto-detect)' }].concat(
 			thermalZones.map(function(z) {
@@ -243,7 +247,7 @@ return view.extend({
 						]),
 						E('tr', {}, [
 							E('td', { class: 'text-muted' }, 'Fan'),
-							E('td', { id: 'fc-fan-val', style: 'text-align:right;font-weight:bold' }, fanLabel(statusPwm))
+							E('td', { id: 'fc-fan-val', style: 'text-align:right;font-weight:bold' }, fanLabel(statusCs, statusMs))
 						]),
 						E('tr', {}, [
 							E('td', { class: 'text-muted' }, 'PWM value'),
