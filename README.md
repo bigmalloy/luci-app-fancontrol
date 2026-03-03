@@ -54,15 +54,15 @@ Download the latest release from [Releases](../../releases).
 ### OpenWrt 25+ (apk)
 
 ```sh
-scp -O luci-app-fancontrol-3.0.1-r1.apk root@192.168.1.1:/tmp/
-apk add --allow-untrusted /tmp/luci-app-fancontrol-3.0.1-r1.apk
+scp -O luci-app-fancontrol-3.1.3-r1.apk root@192.168.1.1:/tmp/
+apk add --allow-untrusted /tmp/luci-app-fancontrol-3.1.3-r1.apk
 ```
 
 ### OpenWrt 24 (opkg)
 
 ```sh
-scp -O luci-app-fancontrol_3.0.1_all.ipk root@192.168.1.1:/tmp/
-opkg install /tmp/luci-app-fancontrol_3.0.1_all.ipk
+scp -O luci-app-fancontrol_3.1.3_all.ipk root@192.168.1.1:/tmp/
+opkg install /tmp/luci-app-fancontrol_3.1.3_all.ipk
 ```
 
 The `--allow-untrusted` / unsigned install flag is required for locally built or release packages that aren't signed by the official OpenWrt key.
@@ -113,7 +113,7 @@ git clone https://github.com/bigmalloy/luci-app-fancontrol.git
 cd luci-app-fancontrol
 chmod +x build.sh
 ./build.sh
-# Output: luci-app-fancontrol_3.0.1_all.ipk
+# Output: luci-app-fancontrol_3.1.3_all.ipk
 ```
 
 ### OpenWrt 25+ APK (via Docker)
@@ -125,7 +125,7 @@ git clone https://github.com/bigmalloy/luci-app-fancontrol.git
 cd luci-app-fancontrol
 chmod +x build-apk-docker.sh
 ./build-apk-docker.sh
-# Output: output/luci-app-fancontrol-3.0.1-r1.apk
+# Output: output/luci-app-fancontrol-3.1.3-r1.apk
 ```
 
 ### Via OpenWrt Buildroot
@@ -153,6 +153,12 @@ make package/luci-app-fancontrol/compile V=s
 - GL-iNet Beryl AX (MT3000) — OpenWrt 24.10.5
 
 ## Changelog
+
+### v3.1.3
+- **Fix:** Daemon now reads each trip point's `type` sysfs file and skips any `critical` trip points — writing user-configured temperatures to the critical trip caused an immediate kernel hardware protection shutdown when the CPU was already above that temperature, requiring a factory reset to recover
+- **Fix:** Two-pass trip point write strategy (forward then reverse) prevents inconsistent thermal zone state when all three temperature thresholds are changed simultaneously — the kernel enforces ordering constraints during writes, leaving trip points corrupt with a single pass
+- **Fix:** Save & Apply now commits only the `fancontrol` UCI config via a targeted `uci.commit` call instead of `ui.changes.apply()`, preventing other staged UCI changes (network, DHCP) from being applied at the same time
+- **Fix:** Added cross-validation on the Fan Off temperature field to ensure it stays below the Half Speed temperature
 
 ### v3.0.1
 - **Fix:** Daemon now sets `pwm1_enable=2` (auto mode) after applying `step_wise` policy — a previous install could leave it at `1` (manual), blocking the thermal framework from driving the PWM output and causing the fan to read as full speed
