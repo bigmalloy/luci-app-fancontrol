@@ -2,9 +2,7 @@
 
 An OpenWrt opkg package that provides automatic PWM fan control via the Linux kernel thermal framework, with a LuCI web interface for configuration.
 
-<img width="1021" height="518" alt="image" src="https://github.com/user-attachments/assets/b03d491a-8e2c-4533-8ccd-bd8f9a35b472" />
-
-
+![Fan Control UI](https://forum.openwrt.org/uploads/default/original/3X/9/0/90a8a293295a71a5475b75063ba80ccd566e9279.png)
 
 ## Features
 
@@ -45,8 +43,8 @@ Rather than writing PWM values directly (which conflicts with the kernel's `pwm-
 Download the latest `.ipk` from [Releases](../../releases), copy to your router and install:
 
 ```sh
-scp luci-app-fancontrol_2.3.0_all.ipk root@192.168.1.1:/tmp/
-opkg install /tmp/luci-app-fancontrol_2.3.0_all.ipk
+scp -O luci-app-fancontrol_2.3.1_all.ipk root@192.168.1.1:/tmp/
+opkg install /tmp/luci-app-fancontrol_2.3.1_all.ipk
 ```
 
 ## Configuration
@@ -93,7 +91,7 @@ git clone https://github.com/bigmalloy/luci-app-fancontrol.git
 cd luci-app-fancontrol
 chmod +x build.sh
 ./build.sh
-# Output: luci-app-fancontrol_2.3.0_all.ipk
+# Output: luci-app-fancontrol_2.3.1_all.ipk
 ```
 
 ## Tested On
@@ -101,6 +99,9 @@ chmod +x build.sh
 - GL-iNet Beryl AX (MT3000) — OpenWrt 24.10.5
 
 ## Changelog
+
+### v2.3.1
+- UI now uses Bootstrap/LuCI theme classes — compatible with all LuCI themes (bootstrap, argon, etc.)
 
 ### v2.3.0
 - Advanced settings section now collapsed by default
@@ -131,8 +132,8 @@ chmod +x build-apk.sh
 
 Install on the router:
 ```sh
-scp luci-app-fancontrol-2.3.0-r0.apk root@192.168.1.1:/tmp/
-apk add --allow-untrusted /tmp/luci-app-fancontrol-2.3.0-r0.apk
+scp -O luci-app-fancontrol-2.3.1-r0.apk root@192.168.1.1:/tmp/
+apk add --allow-untrusted /tmp/luci-app-fancontrol-2.3.1-r0.apk
 ```
 
 The `--allow-untrusted` flag is required for locally built packages since they lack an official signing key.
@@ -171,6 +172,6 @@ make menuconfig
 make package/luci-app-fancontrol/compile V=s
 
 # 5. Find the output
-# OpenWrt 24 (ipk): bin/packages/<arch>/base/luci-app-fancontrol_2.3.0-1_all.ipk
-# OpenWrt 25 (apk): bin/packages/<arch>/base/luci-app-fancontrol-2.3.0-r1.apk
+# OpenWrt 24 (ipk): bin/packages/<arch>/base/luci-app-fancontrol_2.3.1-1_all.ipk
+# OpenWrt 25 (apk): bin/packages/<arch>/base/luci-app-fancontrol-2.3.1-r1.apk
 ```
