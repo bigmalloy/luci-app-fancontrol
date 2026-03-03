@@ -2,7 +2,7 @@
 
 An OpenWrt opkg package that provides automatic PWM fan control via the Linux kernel thermal framework, with a LuCI web interface for configuration.
 
-![Fan Control UI](https://forum.openwrt.org/uploads/default/original/3X/9/0/90a8a293295a71a5475b75063ba80ccd566e9279.png)
+![Fan Control UI](https://raw.githubusercontent.com/bigmalloy/luci-app-fancontrol/main/docs/screenshot.png)
 
 ## Features
 
@@ -20,7 +20,7 @@ Rather than writing PWM values directly (which conflicts with the kernel's `pwm-
 **Temperature → Fan speed mapping (example with defaults):**
 
 | Temp | Cooling State | Fan Speed |
-|------|--------------|-----------|
+|------|--------------|----------|
 | < 58°C | 0 | Off |
 | 58°C | 1 | Low |
 | 63°C | 2 | 37% |
@@ -99,6 +99,9 @@ chmod +x build.sh
 - GL-iNet Beryl AX (MT3000) — OpenWrt 24.10.5
 
 ## Changelog
+
+### v3.0.1
+- Raised default fan-off temperature from 50°C to 60°C
 
 ### v2.3.1
 - UI now uses Bootstrap/LuCI theme classes — compatible with all LuCI themes (bootstrap, argon, etc.)
