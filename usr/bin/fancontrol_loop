@@ -39,31 +39,52 @@ load_uci() {
   [ -z "$PWM"     ] && PWM=$(find_pwm_device)
 }
 
-# Count trip points for a given zone path
-count_trips() {
-  local count=0
-  while [ -f "${1}/trip_point_${count}_temp" ]; do
-    count=$(( count + 1 ))
-  done
-  echo $count
-}
-
-apply_trip_points() {
-  # Trip points are ordered highest to lowest (trip 0 = hottest) on this platform
-  # Spread them evenly from TEMP_FULL down to TEMP_OFF
-  local range=$(( TEMP_FULL - TEMP_OFF ))
-  local i=0
-  while [ $i -lt $NTRIPS ]; do
-    local trip_temp=$(( TEMP_FULL - ( range * i / ( NTRIPS - 1 ) ) ))
-    local trip_temp_milli=$(( trip_temp * 1000 ))
-    local trip_file="${ZONE_PATH}/trip_point_${i}_temp"
-    if [ -f "$trip_file" ]; then
-      echo "$trip_temp_milli" > "$trip_file" 2>/dev/null && \
-        logger -t fancontrol "Set trip $i = ${trip_temp}C" || \
-        logger -t fancontrol "WARNING: Could not write trip $i (read-only)"
+# Build list of non-critical trip point indices for a given zone path.
+# Sets globals: WRITABLE_TRIPS (space-separated indices) and NWRITABLE (count).
+# trip_point_N_type = "critical" triggers a hardware emergency shutdown when
+# crossed — we must never overwrite those.
+get_writable_trips() {
+  local i=0 type
+  WRITABLE_TRIPS=""
+  NWRITABLE=0
+  while [ -f "${1}/trip_point_${i}_temp" ]; do
+    type=$(cat "${1}/trip_point_${i}_type" 2>/dev/null)
+    if [ "$type" != "critical" ]; then
+      WRITABLE_TRIPS="${WRITABLE_TRIPS} ${i}"
+      NWRITABLE=$(( NWRITABLE + 1 ))
     fi
     i=$(( i + 1 ))
   done
+}
+
+apply_trip_points() {
+  # Spread trip points evenly across non-critical indices only.
+  # Two passes (forward then reverse) handle both raising and lowering safely:
+  # the kernel enforces ordering constraints during writes, so a single pass
+  # can leave trip points inconsistent when all temps change simultaneously.
+  local range=$(( TEMP_FULL - TEMP_OFF ))
+  local trip_temp idx j rev_trips=""
+
+  # Forward pass
+  j=0
+  for idx in $WRITABLE_TRIPS; do
+    trip_temp=$(( TEMP_FULL - ( range * j / ( NWRITABLE - 1 ) ) ))
+    echo "$(( trip_temp * 1000 ))" > "${ZONE_PATH}/trip_point_${idx}_temp" 2>/dev/null
+    j=$(( j + 1 ))
+  done
+
+  # Reverse pass — build reversed index list, then write again
+  for idx in $WRITABLE_TRIPS; do
+    rev_trips="${idx} ${rev_trips}"
+  done
+  j=$(( NWRITABLE - 1 ))
+  for idx in $rev_trips; do
+    trip_temp=$(( TEMP_FULL - ( range * j / ( NWRITABLE - 1 ) ) ))
+    echo "$(( trip_temp * 1000 ))" > "${ZONE_PATH}/trip_point_${idx}_temp" 2>/dev/null
+    j=$(( j - 1 ))
+  done
+
+  logger -t fancontrol "Trip points set: off=${TEMP_OFF}C full=${TEMP_FULL}C across ${NWRITABLE} non-critical points (indices:${WRITABLE_TRIPS})"
 }
 
 LAST_CONF_HASH=""
@@ -82,11 +103,11 @@ while true; do
   CONF_HASH="${THERMAL}${PWM}${TEMP_OFF}${TEMP_HALF}${TEMP_FULL}${HYST}"
   if [ "$CONF_HASH" != "$LAST_CONF_HASH" ]; then
     ZONE_PATH="/sys/class/thermal/${ZONE}"
-    NTRIPS=$(count_trips "$ZONE_PATH")
-    logger -t fancontrol "Using thermal zone: $ZONE with $NTRIPS trip points"
+    get_writable_trips "$ZONE_PATH"
+    logger -t fancontrol "Using thermal zone: $ZONE — ${NWRITABLE} non-critical trip points (indices:${WRITABLE_TRIPS})"
 
-    if [ "$NTRIPS" -lt 2 ]; then
-      logger -t fancontrol "ERROR: Need at least 2 trip points in $ZONE (found $NTRIPS)"
+    if [ "$NWRITABLE" -lt 2 ]; then
+      logger -t fancontrol "ERROR: Need at least 2 non-critical trip points in $ZONE (found $NWRITABLE)"
       exit 1
     fi
 
@@ -98,6 +119,13 @@ while true; do
     # the step_wise governor from changing the actual PWM output.
     PWM_ENABLE="${PWM}_enable"
     [ -w "$PWM_ENABLE" ] && echo 2 > "$PWM_ENABLE" 2>/dev/null
+
+    if [ "$TEMP_FULL" -le "$TEMP_OFF" ]; then
+      logger -t fancontrol "ERROR: temp_full (${TEMP_FULL}) must be greater than temp_off (${TEMP_OFF}) - skipping trip point update"
+      LAST_CONF_HASH=""
+      sleep "$POLL"
+      continue
+    fi
 
     logger -t fancontrol "Fan control started - kernel thermal mode (off<${TEMP_OFF}C half<${TEMP_HALF}C full>${TEMP_FULL}C)"
     apply_trip_points
