@@ -10,12 +10,15 @@ An OpenWrt opkg package that provides automatic PWM fan control via the Linux ke
 - LuCI web interface under **Services → Fan Control**
 - Live status: service state, CPU temperature, fan speed, PWM value (auto-refreshes every 10s)
 - Configurable temperature thresholds with graduated 5-step fan curve
-- Collapsible Advanced settings for sysfs paths and poll interval
+- Auto-detects thermal zone and PWM device — works out of the box on most devices
+- Collapsible Advanced settings for sysfs path overrides and poll interval
 - Settings persist across reboots
 
 ## How It Works
 
 Rather than writing PWM values directly (which conflicts with the kernel's `pwm-fan` driver), this package configures the kernel's thermal trip points to match your desired thresholds. The kernel's `step_wise` governor then manages the fan automatically across up to 5 cooling states.
+
+Settings are stored in UCI format at `/etc/config/fancontrol` and read by the daemon at runtime. On startup the daemon auto-detects the correct thermal zone (by finding whichever zone has the `pwm-fan` cooling device linked) and the first writable PWM sysfs node — so it works out of the box on most devices with no manual path configuration needed. You can override both paths in the Advanced settings if required.
 
 **Temperature → Fan speed mapping (example with defaults):**
 
@@ -40,11 +43,18 @@ Rather than writing PWM values directly (which conflicts with the kernel's `pwm-
 
 ## Installation
 
-Download the latest `.ipk` from [Releases](../../releases), copy to your router and install:
+Download the latest release from [Releases](../../releases), copy to your router and install:
 
+### OpenWrt 24 (opkg)
 ```sh
 scp -O luci-app-fancontrol_3.0.1_all.ipk root@192.168.1.1:/tmp/
 opkg install /tmp/luci-app-fancontrol_3.0.1_all.ipk
+```
+
+### OpenWrt 25+ (apk)
+```sh
+scp -O luci-app-fancontrol-3.0.1-r1.apk root@192.168.1.1:/tmp/
+apk add --allow-untrusted /tmp/luci-app-fancontrol-3.0.1-r1.apk
 ```
 
 ## Configuration
@@ -58,15 +68,15 @@ Navigate to **Services → Fan Control** in LuCI.
 | Full Speed Above | 75°C | Fan runs at 100% above this temperature |
 | Hysteresis | 2°C | Dead band to prevent rapid toggling |
 | Poll Interval | 10s | How often the kernel checks temperature |
-| Thermal Zone Path | `/sys/class/thermal/thermal_zone0/temp` | sysfs temperature sensor |
-| PWM Device Path | `/sys/class/hwmon/hwmon2/pwm1` | sysfs PWM control |
+| Thermal Zone Path | auto-detect | sysfs temperature sensor — auto-detects zone linked to pwm-fan |
+| PWM Device Path | auto-detect | sysfs PWM control — auto-detects first writable pwm node |
 
 ## File Layout
 
 ```
 etc/
-  fancontrol/
-    fancontrol.conf         # Runtime configuration
+  config/
+    fancontrol              # UCI configuration (managed by uci)
   init.d/
     fancontrol              # Procd init script
 usr/
@@ -96,12 +106,18 @@ chmod +x build.sh
 
 ## Tested On
 
-- GL-iNet Beryl AX (MT3000) — OpenWrt 24.10.5
+- GL-iNet Beryl AX (MT3000) — OpenWrt 24.10.5 and 25.12.0-rc5
 
 ## Changelog
 
 ### v3.0.1
 - Raised default fan-off temperature from 50°C to 60°C
+
+### v3.0.0
+- Config migrated to UCI format (`/etc/config/fancontrol`)
+- Auto-detection of thermal zone and PWM device — no manual path config needed
+- Thermal zone and PWM dropdowns in UI populated from live sysfs enumeration
+- Zones marked with ★ in dropdown when directly linked to pwm-fan cooling device
 
 ### v2.3.1
 - UI now uses Bootstrap/LuCI theme classes — compatible with all LuCI themes (bootstrap, argon, etc.)
@@ -122,15 +138,14 @@ chmod +x build.sh
 
 MIT
 
-## OpenWrt 25+ (APK format)
-
-OpenWrt 25.12 and later use `apk` instead of `opkg`. Build the `.apk` package:
+## Building APK for OpenWrt 25+ (via Docker)
 
 ```sh
 git clone https://github.com/bigmalloy/luci-app-fancontrol.git
 cd luci-app-fancontrol
 chmod +x build-apk-docker.sh
 ./build-apk-docker.sh
+# Output: output/luci-app-fancontrol-3.0.1-r1.apk
 ```
 
 Install on the router:
@@ -141,7 +156,7 @@ apk add --allow-untrusted /tmp/luci-app-fancontrol-3.0.1-r1.apk
 
 The `--allow-untrusted` flag is required for locally built packages since they lack an official signing key.
 
-## Building a proper APK for OpenWrt 25+ (via OpenWrt buildroot)
+## Building APK via OpenWrt buildroot
 
 The OpenWrt 25+ APK format uses a binary database format (`apk mkpkg`) that cannot be built with a simple shell script — it requires the OpenWrt build system's host tools. Use the included `openwrt-feed/` directory:
 
