@@ -10,7 +10,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-fancontrol
-PKG_VERSION:=2.3.0
+PKG_VERSION:=3.0.0
 PKG_RELEASE:=1
 
 PKG_MAINTAINER:=Your Name <you@example.com>
@@ -23,7 +23,7 @@ define Package/luci-app-fancontrol
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
   TITLE:=LuCI Fan Control
-  DEPENDS:=+luci-base +rpcd +jsonfilter +kmod-hwmon-core +kmod-hwmon-pwmfan +kmod-i2c-core +lm-sensors
+  DEPENDS:=+luci-base +rpcd +jsonfilter +uci +kmod-hwmon-core +kmod-hwmon-pwmfan
   PKGARCH:=all
 endef
 
@@ -31,6 +31,7 @@ define Package/luci-app-fancontrol/description
   Automatic PWM fan control via the Linux kernel thermal framework,
   with a LuCI web interface for configuration. Supports graduated
   fan speed control using configurable temperature thresholds.
+  Devices are auto-detected from the kernel's thermal and hwmon sysfs.
 endef
 
 # No build step needed - all files are shell scripts and JavaScript
@@ -68,14 +69,32 @@ define Package/luci-app-fancontrol/install
 	$(INSTALL_BIN) ./files/fancontrol.init \
 		$(1)/etc/init.d/fancontrol
 
-	# Default config
-	$(INSTALL_DIR) $(1)/etc/fancontrol
+	# UCI config (installed only if not already present)
+	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_CONF) ./files/fancontrol.conf \
-		$(1)/etc/fancontrol/fancontrol.conf
+		$(1)/etc/config/fancontrol
 endef
 
 define Package/luci-app-fancontrol/postinst
 #!/bin/sh
+# Migrate old shell key=value config to UCI format if present
+if [ -f /etc/fancontrol/fancontrol.conf ]; then
+  THERMAL="/sys/class/thermal/thermal_zone0/temp"
+  PWM="/sys/class/hwmon/hwmon2/pwm1"
+  TEMP_OFF=50; TEMP_HALF=65; TEMP_FULL=75; HYST=2; POLL=10
+  . /etc/fancontrol/fancontrol.conf 2>/dev/null || true
+  uci -q set fancontrol.settings=fancontrol
+  uci -q set "fancontrol.settings.thermal=${THERMAL}"
+  uci -q set "fancontrol.settings.pwm=${PWM}"
+  uci -q set "fancontrol.settings.temp_off=${TEMP_OFF}"
+  uci -q set "fancontrol.settings.temp_half=${TEMP_HALF}"
+  uci -q set "fancontrol.settings.temp_full=${TEMP_FULL}"
+  uci -q set "fancontrol.settings.hyst=${HYST}"
+  uci -q set "fancontrol.settings.poll=${POLL}"
+  uci -q commit fancontrol
+  rm -f /etc/fancontrol/fancontrol.conf
+  rmdir /etc/fancontrol 2>/dev/null || true
+fi
 [ -f /etc/init.d/fancontrol ] && /etc/init.d/fancontrol enable
 [ -f /etc/init.d/fancontrol ] && /etc/init.d/fancontrol start
 [ -f /etc/init.d/rpcd ] && /etc/init.d/rpcd restart

@@ -2,7 +2,7 @@
 set -e
 
 PKG="luci-app-fancontrol"
-VER="2.3.0"
+VER="3.0.0"
 OUT="${PKG}_${VER}_all.ipk"
 
 echo "Building $OUT..."
@@ -17,7 +17,7 @@ cp -r etc usr www "$WORK/data-staging/"
 chmod 755 "$WORK/data-staging/usr/bin/fancontrol_loop"
 chmod 755 "$WORK/data-staging/etc/init.d/fancontrol"
 chmod 755 "$WORK/data-staging/usr/libexec/rpcd/luci.fancontrol"
-chmod 644 "$WORK/data-staging/etc/fancontrol/fancontrol.conf"
+chmod 644 "$WORK/data-staging/etc/config/fancontrol"
 chmod 644 "$WORK/data-staging/www/luci-static/resources/view/fancontrol/fancontrol.js"
 chmod 644 "$WORK/data-staging/usr/share/luci/menu.d/luci-app-fancontrol.json"
 chmod 644 "$WORK/data-staging/usr/share/rpcd/acl.d/luci-app-fancontrol.json"

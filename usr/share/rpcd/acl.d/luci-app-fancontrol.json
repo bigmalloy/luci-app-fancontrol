@@ -5,9 +5,11 @@
 			"ubus": {
 				"luci.fancontrol": [
 					"get_config",
-					"get_status"
+					"get_status",
+					"list_devices"
 				]
-			}
+			},
+			"uci": [ "fancontrol" ]
 		},
 		"write": {
 			"ubus": {
@@ -17,7 +19,8 @@
 					"service_stop",
 					"service_restart"
 				]
-			}
+			},
+			"uci": [ "fancontrol" ]
 		}
 	}
 }

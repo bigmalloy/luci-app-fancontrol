@@ -1,6 +1,6 @@
 Package: luci-app-fancontrol
-Version: 2.3.0
-Depends: libc, luci-base, rpcd, jsonfilter, kmod-hwmon-core, kmod-hwmon-pwmfan, kmod-i2c-core, lm-sensors
+Version: 3.0.0
+Depends: libc, luci-base, rpcd, jsonfilter, uci, kmod-hwmon-core, kmod-hwmon-pwmfan
 Architecture: all
 Maintainer: OpenWrt User
 Description: Automatic PWM fan control with LuCI web interface
