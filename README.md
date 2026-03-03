@@ -21,12 +21,12 @@ Rather than writing PWM values directly (which conflicts with the kernel's `pwm-
 
 | Temp | Cooling State | Fan Speed |
 |------|--------------|----------|
-| < 58°C | 0 | Off |
-| 58°C | 1 | Low |
-| 63°C | 2 | 37% |
+| < 60°C | 0 | Off |
+| 60°C | 1 | Low |
+| 64°C | 2 | 37% |
 | 68°C | 3 | 50% |
-| 73°C | 4 | 75% |
-| ≥ 77°C | 5+ | Full |
+| 72°C | 4 | 75% |
+| ≥ 75°C | 5+ | Full |
 
 ## Requirements
 
@@ -43,8 +43,8 @@ Rather than writing PWM values directly (which conflicts with the kernel's `pwm-
 Download the latest `.ipk` from [Releases](../../releases), copy to your router and install:
 
 ```sh
-scp -O luci-app-fancontrol_2.3.1_all.ipk root@192.168.1.1:/tmp/
-opkg install /tmp/luci-app-fancontrol_2.3.1_all.ipk
+scp -O luci-app-fancontrol_3.0.1_all.ipk root@192.168.1.1:/tmp/
+opkg install /tmp/luci-app-fancontrol_3.0.1_all.ipk
 ```
 
 ## Configuration
@@ -53,9 +53,9 @@ Navigate to **Services → Fan Control** in LuCI.
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| Fan Off Below | 58°C | Fan is fully off below this temperature |
-| Half Speed Below | 73°C | Upper boundary for graduated speed range |
-| Full Speed Above | 77°C | Fan runs at 100% above this temperature |
+| Fan Off Below | 60°C | Fan is fully off below this temperature |
+| Half Speed Below | 65°C | Upper boundary for graduated speed range |
+| Full Speed Above | 75°C | Fan runs at 100% above this temperature |
 | Hysteresis | 2°C | Dead band to prevent rapid toggling |
 | Poll Interval | 10s | How often the kernel checks temperature |
 | Thermal Zone Path | `/sys/class/thermal/thermal_zone0/temp` | sysfs temperature sensor |
@@ -91,7 +91,7 @@ git clone https://github.com/bigmalloy/luci-app-fancontrol.git
 cd luci-app-fancontrol
 chmod +x build.sh
 ./build.sh
-# Output: luci-app-fancontrol_2.3.1_all.ipk
+# Output: luci-app-fancontrol_3.0.1_all.ipk
 ```
 
 ## Tested On
@@ -127,31 +127,19 @@ MIT
 OpenWrt 25.12 and later use `apk` instead of `opkg`. Build the `.apk` package:
 
 ```sh
-git clone https://github.com/YOUR_USERNAME/luci-app-fancontrol.git
+git clone https://github.com/bigmalloy/luci-app-fancontrol.git
 cd luci-app-fancontrol
-chmod +x build-apk.sh
-./build-apk.sh
+chmod +x build-apk-docker.sh
+./build-apk-docker.sh
 ```
 
 Install on the router:
 ```sh
-scp -O luci-app-fancontrol-2.3.1-r0.apk root@192.168.1.1:/tmp/
-apk add --allow-untrusted /tmp/luci-app-fancontrol-2.3.1-r0.apk
+scp -O luci-app-fancontrol-3.0.1-r1.apk root@192.168.1.1:/tmp/
+apk add --allow-untrusted /tmp/luci-app-fancontrol-3.0.1-r1.apk
 ```
 
 The `--allow-untrusted` flag is required for locally built packages since they lack an official signing key.
-
-For users on Alpine Linux who want to build using `abuild` properly:
-```sh
-# Install abuild
-apk add alpine-sdk
-# Add yourself to the abuild group
-addgroup $USER abuild
-# Generate a signing key
-abuild-keygen -a -i
-# Build
-abuild -r
-```
 
 ## Building a proper APK for OpenWrt 25+ (via OpenWrt buildroot)
 
@@ -175,6 +163,6 @@ make menuconfig
 make package/luci-app-fancontrol/compile V=s
 
 # 5. Find the output
-# OpenWrt 24 (ipk): bin/packages/<arch>/base/luci-app-fancontrol_2.3.1-1_all.ipk
-# OpenWrt 25 (apk): bin/packages/<arch>/base/luci-app-fancontrol-2.3.1-r1.apk
+# OpenWrt 24 (ipk): bin/packages/<arch>/base/luci-app-fancontrol_3.0.1-1_all.ipk
+# OpenWrt 25 (apk): bin/packages/<arch>/base/luci-app-fancontrol-3.0.1-r1.apk
 ```
