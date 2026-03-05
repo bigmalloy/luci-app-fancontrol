@@ -13,8 +13,9 @@ PKG_NAME:=luci-app-fancontrol
 PKG_VERSION:=3.1.3
 PKG_RELEASE:=1
 
-PKG_MAINTAINER:=Your Name <you@example.com>
+PKG_MAINTAINER:=Michael Eiberg <bcmalloy@hotmail.com>
 PKG_LICENSE:=MIT
+PKG_LICENSE_FILES:=LICENSE
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -23,7 +24,8 @@ define Package/luci-app-fancontrol
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
   TITLE:=LuCI Fan Control
-  DEPENDS:=+luci-base +rpcd +jsonfilter +uci +kmod-hwmon-core +kmod-hwmon-pwmfan
+  URL:=https://github.com/bigmalloy/luci-app-fancontrol
+  DEPENDS:=+luci-base +rpcd +jsonfilter +uci +kmod-hwmon-core
   PKGARCH:=all
 endef
 
@@ -79,8 +81,8 @@ define Package/luci-app-fancontrol/postinst
 #!/bin/sh
 # Migrate old shell key=value config to UCI format if present
 if [ -f /etc/fancontrol/fancontrol.conf ]; then
-  THERMAL="/sys/class/thermal/thermal_zone0/temp"
-  PWM="/sys/class/hwmon/hwmon2/pwm1"
+  THERMAL=""
+  PWM=""
   TEMP_OFF=60; TEMP_HALF=65; TEMP_FULL=75; HYST=2; POLL=10
   . /etc/fancontrol/fancontrol.conf 2>/dev/null || true
   uci -q set fancontrol.settings=fancontrol
