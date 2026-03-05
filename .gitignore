@@ -1,2 +1,3 @@
 *.ipk
 keys/*.pem
+keys/*-p8.pem

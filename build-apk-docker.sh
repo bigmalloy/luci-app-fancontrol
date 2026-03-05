@@ -35,11 +35,17 @@ fi
 HOST_UID="$(id -u)"
 HOST_GID="$(id -g)"
 
+PRIVATE_KEY_P8="${SCRIPT_DIR}/keys/luci-fancontrol-signing-p8.pem"
+if [ ! -f "${PRIVATE_KEY_P8}" ]; then
+  echo "Converting key to PKCS#8 format for adbsign..."
+  openssl pkcs8 -topk8 -nocrypt -in "${PRIVATE_KEY}" -out "${PRIVATE_KEY_P8}"
+fi
+
 docker run --rm \
   -v "${SCRIPT_DIR}:/pkg-src:ro" \
   -v "${SCRIPT_DIR}/output:/output" \
-  -v "${PRIVATE_KEY}:/signing-key/key-build:ro" \
-  -v "${PUBLIC_KEY}:/signing-key/key-build.pub:ro" \
+  -v "${PRIVATE_KEY_P8}:/signing-key/key-build-p8:ro" \
+  -v "${PUBLIC_KEY}:/signing-key/luci-fancontrol-signing.pub:ro" \
   --user root \
   -e HOST_UID="${HOST_UID}" \
   -e HOST_GID="${HOST_GID}" \
@@ -49,11 +55,6 @@ docker run --rm \
 
     SDK_DIR="/builder"
     cd "$SDK_DIR"
-
-    echo "--- Installing signing key ---"
-    cp /signing-key/key-build key-build
-    cp /signing-key/key-build.pub key-build.pub
-    chmod 600 key-build
 
     echo "--- Setting up package ---"
     mkdir -p package/luci-app-fancontrol/files
@@ -75,6 +76,17 @@ docker run --rm \
     echo "--- Copying output ---"
     find bin/ -name "luci-app-fancontrol*" -type f | tee /tmp/found.txt
     cat /tmp/found.txt | xargs -I{} cp {} /output/
+
+    echo "--- Signing APK with adbsign ---"
+    /builder/staging_dir/host/bin/apk --allow-untrusted adbsign \
+      --sign-key /signing-key/key-build-p8 \
+      /output/luci-app-fancontrol-*.apk
+
+    echo "--- Verifying signature ---"
+    /builder/staging_dir/host/bin/apk verify \
+      --keys-dir /signing-key \
+      /output/luci-app-fancontrol-*.apk
+
     chown "${HOST_UID}:${HOST_GID}" /output/luci-app-fancontrol*
     ls -lh /output/
   '
