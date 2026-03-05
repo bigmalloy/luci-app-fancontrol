@@ -1,6 +1,6 @@
 # luci-app-fancontrol
 
-An OpenWrt package that provides automatic PWM fan control via the Linux kernel thermal framework, with a LuCI web interface for configuration.
+An OpenWrt opkg package that provides automatic PWM fan control via the Linux kernel thermal framework, with a LuCI web interface for configuration.
 
 ![Fan Control UI](https://raw.githubusercontent.com/bigmalloy/luci-app-fancontrol/main/docs/screenshot.png)
 
@@ -8,64 +8,82 @@ An OpenWrt package that provides automatic PWM fan control via the Linux kernel 
 
 - Works **with** the kernel thermal framework by configuring trip points — no driver conflicts
 - LuCI web interface under **Services → Fan Control**
-- Live status: service state, CPU temperature, fan speed label, PWM value (auto-refreshes every 10s)
-- Configurable temperature thresholds with graduated fan curve
-- Auto-detects thermal zone and PWM device — works out of the box on most devices
-- Collapsible Advanced settings for sysfs path overrides and poll interval
+- Live status: service state, CPU temperature, fan speed, PWM value (auto-refreshes every 10s)
+- Configurable temperature thresholds with graduated 5-step fan curve
+- Collapsible Advanced settings for sysfs paths and poll interval
 - Settings persist across reboots
 
 ## How It Works
 
-Rather than writing PWM values directly (which conflicts with the kernel's `pwm-fan` driver), this package configures the kernel's thermal trip points to match your desired thresholds. The kernel's `step_wise` governor then manages the fan automatically.
+Rather than writing PWM values directly (which conflicts with the kernel's `pwm-fan` driver), this package configures the kernel's thermal trip points to match your desired thresholds. The kernel's `step_wise` governor then manages the fan automatically across up to 5 cooling states.
 
-Settings are stored in UCI format at `/etc/config/fancontrol`. On startup the daemon:
-1. Auto-detects the thermal zone linked to the `pwm-fan` cooling device
-2. Auto-detects the first writable PWM sysfs node
-3. Sets `pwm1_enable=2` (auto mode) so the thermal framework can drive the PWM output
-4. Sets the thermal zone policy to `step_wise`
-5. Writes trip point temperatures spread evenly between your Fan Off and Full Speed thresholds
+Settings are stored in UCI format at `/etc/config/fancontrol` and read by the daemon at runtime. On startup the daemon auto-detects the correct thermal zone (by finding whichever zone has the `pwm-fan` cooling device linked) and the first writable PWM sysfs node — so it works out of the box on most devices with no manual path configuration needed. You can override both paths in the Advanced settings if required.
 
-You can override both sysfs paths in the Advanced settings if required.
+**Temperature → Fan speed mapping (example with defaults):**
 
-**Example fan curve with default thresholds (60 / 65 / 75°C):**
-
-| Temperature | Cooling State | Fan Label |
-|-------------|---------------|-----------|
+| Temp | Cooling State | Fan Speed |
+|------|--------------|----------|
 | < 60°C | 0 | Off |
-| 60–65°C | 1 | Low |
-| 65–70°C | 2 | Medium |
-| > 70°C → 75°C | 3+ | High → Full speed |
-
-The number of discrete cooling states depends on the device (`max_state` on the pwm-fan cooling device). The fan label shown in the UI adapts automatically.
+| 60°C | 1 | Low |
+| 64°C | 2 | 37% |
+| 68°C | 3 | 50% |
+| 72°C | 4 | 75% |
+| ≥ 75°C | 5+ | Full |
 
 ## Requirements
 
 - OpenWrt 23.05 or later (JavaScript-based LuCI)
 - `kmod-hwmon-core`
-- `kmod-hwmon-pwmfan`
 - `rpcd`
 - `jsonfilter`
-- `uci`
 
 ## Installation
 
-Download the latest release from [Releases](../../releases).
+### OpenWrt 25+ (APK)
 
-### OpenWrt 25+ (apk)
+Packages are signed with a trusted key. You need to install the public key on your router **once**, then you can install and update through LuCI's software manager without any extra flags.
 
+#### Step 1 — Install the public key (one-time)
+
+**Via LuCI (System → Software → Public Keys tab):**
+
+1. Download [`luci-fancontrol-signing.pub`](keys/luci-fancontrol-signing.pub) from this repo
+2. In LuCI go to **System → Software**
+3. Click the **Public Keys** tab
+4. Click **Upload key** and select the downloaded `.pub` file
+5. Click **Save**
+
+**Or via CLI:**
 ```sh
-scp -O luci-app-fancontrol-3.1.3-r1.apk root@192.168.1.1:/tmp/
-apk add --allow-untrusted /tmp/luci-app-fancontrol-3.1.3-r1.apk
+wget -O /etc/apk/keys/luci-fancontrol-signing.pub \
+  https://raw.githubusercontent.com/bigmalloy/luci-app-fancontrol/main/keys/luci-fancontrol-signing.pub
 ```
 
-### OpenWrt 24 (opkg)
+#### Step 2 — Install the package
+
+**Via LuCI (System → Software):**
+
+1. Download the latest `.apk` from [Releases](../../releases)
+2. In LuCI go to **System → Software**
+3. Click **Upload Package...**
+4. Select the downloaded `.apk` file and click **Upload**
+
+**Or via CLI:**
+```sh
+scp -O luci-app-fancontrol-3.1.3-r1.apk root@192.168.1.1:/tmp/
+ssh root@192.168.1.1 "apk add /tmp/luci-app-fancontrol-3.1.3-r1.apk"
+```
+
+---
+
+### OpenWrt 24 (IPK / opkg)
+
+Download the latest `.ipk` from [Releases](../../releases):
 
 ```sh
 scp -O luci-app-fancontrol_3.1.3_all.ipk root@192.168.1.1:/tmp/
-opkg install /tmp/luci-app-fancontrol_3.1.3_all.ipk
+ssh root@192.168.1.1 "opkg install /tmp/luci-app-fancontrol_3.1.3_all.ipk"
 ```
-
-The `--allow-untrusted` / unsigned install flag is required for locally built or release packages that aren't signed by the official OpenWrt key.
 
 ## Configuration
 
@@ -77,7 +95,7 @@ Navigate to **Services → Fan Control** in LuCI.
 | Half Speed Below | 65°C | Upper boundary for graduated speed range |
 | Full Speed Above | 75°C | Fan runs at 100% above this temperature |
 | Hysteresis | 2°C | Dead band to prevent rapid toggling |
-| Poll Interval | 10s | How often the daemon polls for config changes |
+| Poll Interval | 10s | How often the kernel checks temperature |
 | Thermal Zone Path | auto-detect | sysfs temperature sensor — auto-detects zone linked to pwm-fan |
 | PWM Device Path | auto-detect | sysfs PWM control — auto-detects first writable pwm node |
 
@@ -86,12 +104,12 @@ Navigate to **Services → Fan Control** in LuCI.
 ```
 etc/
   config/
-    fancontrol              # UCI configuration (managed by uci)
+    fancontrol              # UCI configuration (key=value, managed by uci)
   init.d/
     fancontrol              # Procd init script
 usr/
   bin/
-    fancontrol_loop         # Main daemon — configures kernel trip points
+    fancontrol_loop         # Main daemon - configures kernel trip points
   libexec/rpcd/
     luci.fancontrol         # rpcd call script (privileged operations)
   share/
@@ -104,70 +122,26 @@ www/
     fancontrol.js           # LuCI JavaScript view
 ```
 
-## Building From Source
-
-### OpenWrt 24 IPK
-
-```sh
-git clone https://github.com/bigmalloy/luci-app-fancontrol.git
-cd luci-app-fancontrol
-chmod +x build.sh
-./build.sh
-# Output: luci-app-fancontrol_3.1.3_all.ipk
-```
-
-### OpenWrt 25+ APK (via Docker)
-
-Requires Docker. Uses the official OpenWrt SDK image to produce a properly signed APK.
-
-```sh
-git clone https://github.com/bigmalloy/luci-app-fancontrol.git
-cd luci-app-fancontrol
-chmod +x build-apk-docker.sh
-./build-apk-docker.sh
-# Output: output/luci-app-fancontrol-3.1.3-r1.apk
-```
-
-### Via OpenWrt Buildroot
-
-```sh
-# 1. Clone the OpenWrt buildroot
-git clone https://git.openwrt.org/openwrt/openwrt.git
-cd openwrt
-
-# 2. Copy the feed into the package tree
-cp -r /path/to/luci-app-fancontrol/openwrt-feed package/luci-app-fancontrol
-
-# 3. Update feeds and select the package
-./scripts/feeds update -a && ./scripts/feeds install -a
-make menuconfig
-# Navigate to: LuCI → Applications → luci-app-fancontrol → [M]
-
-# 4. Build just this package
-make package/luci-app-fancontrol/compile V=s
-```
-
 ## Tested On
 
-- GL-iNet Beryl AX (MT3000) — OpenWrt 25.12.0-rc5
 - GL-iNet Beryl AX (MT3000) — OpenWrt 24.10.5
 
 ## Changelog
 
 ### v3.1.3
-- **Fix:** Daemon now reads each trip point's `type` sysfs file and skips any `critical` trip points — writing user-configured temperatures to the critical trip caused an immediate kernel hardware protection shutdown when the CPU was already above that temperature, requiring a factory reset to recover
-- **Fix:** Two-pass trip point write strategy (forward then reverse) prevents inconsistent thermal zone state when all three temperature thresholds are changed simultaneously — the kernel enforces ordering constraints during writes, leaving trip points corrupt with a single pass
-- **Fix:** Save & Apply now commits only the `fancontrol` UCI config via a targeted `uci.commit` call instead of `ui.changes.apply()`, preventing other staged UCI changes (network, DHCP) from being applied at the same time
-- **Fix:** Added cross-validation on the Fan Off temperature field to ensure it stays below the Half Speed temperature
+- APK packages are now signed — install through LuCI software manager without `--allow-untrusted`
+- See [Installation](#installation) for one-time public key setup
+- Hardware protection: daemon skips critical trip points to prevent accidental thermal shutdown
+- Two-pass trip point write strategy for consistent kernel state
+- Scoped UCI apply — only commits `fancontrol` config, not unrelated staged changes
+- Cross-validation on all temperature fields
 
 ### v3.0.1
-- **Fix:** Daemon now sets `pwm1_enable=2` (auto mode) after applying `step_wise` policy — a previous install could leave it at `1` (manual), blocking the thermal framework from driving the PWM output and causing the fan to read as full speed
-- **Fix:** Fan speed label (Off / Low / Medium / High / Full speed) now uses the cooling device `cur_state` / `max_state` ratio so it is accurate regardless of how many cooling states the device has
 - Raised default fan-off temperature from 50°C to 60°C
 
 ### v3.0.0
 - Config migrated to UCI format (`/etc/config/fancontrol`)
-- Auto-detection of thermal zone and PWM device — no manual path config needed on first install
+- Auto-detection of thermal zone and PWM device — no manual path config needed
 - Thermal zone and PWM dropdowns in UI populated from live sysfs enumeration
 - Zones marked with ★ in dropdown when directly linked to pwm-fan cooling device
 
@@ -175,13 +149,13 @@ make package/luci-app-fancontrol/compile V=s
 - UI now uses Bootstrap/LuCI theme classes — compatible with all LuCI themes (bootstrap, argon, etc.)
 
 ### v2.3.0
-- Advanced settings section collapsed by default
-- Replaced LuCI Save & Apply with custom Save button (avoids UCI spinner)
+- Advanced settings section now collapsed by default
+- Replaced LuCI Save & Apply with our own Save button (avoids UCI popup/spinner)
 - Removed Start/Stop/Restart buttons (service restarts automatically on save)
 
 ### v2.0.0
 - Complete rewrite to work with kernel thermal framework via trip points
-- No longer conflicts with the kernel pwm-fan driver
+- No longer fights the kernel pwm-fan driver
 
 ### v1.x
 - Direct PWM control (deprecated — conflicted with kernel thermal framework)
@@ -189,3 +163,37 @@ make package/luci-app-fancontrol/compile V=s
 ## License
 
 MIT
+
+## Building From Source
+
+### OpenWrt 25+ APK (via Docker)
+
+Requires Docker. Builds a properly signed APK using the OpenWrt SDK.
+
+```sh
+git clone https://github.com/bigmalloy/luci-app-fancontrol.git
+cd luci-app-fancontrol
+# First time only — generate your own signing key:
+chmod +x generate-key.sh && ./generate-key.sh
+# Build:
+chmod +x build-apk-docker.sh && ./build-apk-docker.sh
+# Output: output/luci-app-fancontrol-3.1.3-r1.apk
+```
+
+### OpenWrt 24 IPK
+
+```sh
+chmod +x build.sh && ./build.sh
+# Output: luci-app-fancontrol_3.1.3_all.ipk
+```
+
+### Via OpenWrt buildroot
+
+```sh
+git clone https://git.openwrt.org/openwrt/openwrt.git
+cd openwrt
+cp -r /path/to/luci-app-fancontrol/openwrt-feed package/luci-app-fancontrol
+./scripts/feeds update -a && ./scripts/feeds install -a
+make menuconfig  # LuCI → Applications → luci-app-fancontrol → [M]
+make package/luci-app-fancontrol/compile V=s
+```
