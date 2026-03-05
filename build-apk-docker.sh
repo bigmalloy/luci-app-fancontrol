@@ -23,12 +23,23 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "${SCRIPT_DIR}/output"
 
+PRIVATE_KEY="${SCRIPT_DIR}/keys/luci-fancontrol-signing.pem"
+PUBLIC_KEY="${SCRIPT_DIR}/keys/luci-fancontrol-signing.pub"
+
+if [ ! -f "${PRIVATE_KEY}" ]; then
+  echo "ERROR: Signing key not found at ${PRIVATE_KEY}"
+  echo "Run ./generate-key.sh first."
+  exit 1
+fi
+
 HOST_UID="$(id -u)"
 HOST_GID="$(id -g)"
 
 docker run --rm \
   -v "${SCRIPT_DIR}:/pkg-src:ro" \
   -v "${SCRIPT_DIR}/output:/output" \
+  -v "${PRIVATE_KEY}:/signing-key/key-build:ro" \
+  -v "${PUBLIC_KEY}:/signing-key/key-build.pub:ro" \
   --user root \
   -e HOST_UID="${HOST_UID}" \
   -e HOST_GID="${HOST_GID}" \
@@ -38,6 +49,11 @@ docker run --rm \
 
     SDK_DIR="/builder"
     cd "$SDK_DIR"
+
+    echo "--- Installing signing key ---"
+    cp /signing-key/key-build key-build
+    cp /signing-key/key-build.pub key-build.pub
+    chmod 600 key-build
 
     echo "--- Setting up package ---"
     mkdir -p package/luci-app-fancontrol/files
@@ -70,5 +86,8 @@ ls -lh "${SCRIPT_DIR}/output/"luci-app-fancontrol* 2>/dev/null && \
 echo "================================================"
 echo ""
 echo "Install on OpenWrt 25+:"
-echo "  scp output/luci-app-fancontrol-*.apk root@192.168.1.1:/tmp/"
-echo "  apk add --allow-untrusted /tmp/luci-app-fancontrol-*.apk"
+echo "  scp -O output/luci-app-fancontrol-*.apk root@192.168.1.1:/tmp/"
+echo "  apk add /tmp/luci-app-fancontrol-*.apk"
+echo ""
+echo "NOTE: Router must have your public key installed in /etc/apk/keys/"
+echo "  (one-time: scp -O keys/luci-fancontrol-signing.pub root@192.168.1.1:/etc/apk/keys/)"
