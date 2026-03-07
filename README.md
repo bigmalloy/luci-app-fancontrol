@@ -47,13 +47,11 @@ Packages are signed with a trusted key. You need to install the public key on yo
 
 **Via LuCI (System → Administration → Repo Public Keys):**
 
-1. In LuCI go to **System → Administration**
-2. Click the **Repo Public Keys** tab
-3. Either:
-   - Paste the key URL into the box:
-     `https://raw.githubusercontent.com/bigmalloy/luci-app-fancontrol/main/keys/luci-fancontrol-signing.pub`
-   - Or drag the downloaded [`luci-fancontrol-signing.pub`](keys/luci-fancontrol-signing.pub) file into the box
-4. Click **Add key**
+1. Download [`luci-fancontrol-signing.pub`](keys/luci-fancontrol-signing.pub) from this repo
+2. In LuCI go to **System → Administration**
+3. Click the **Repo Public Keys** tab
+4. Drag the downloaded `.pub` file into the box
+5. Click **Add key**
 
 **Or via CLI:**
 ```sh
