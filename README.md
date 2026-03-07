@@ -50,8 +50,7 @@ Packages are signed with a trusted key. You need to install the public key on yo
 1. Download [`luci-fancontrol-signing.pub`](keys/luci-fancontrol-signing.pub) from this repo
 2. In LuCI go to **System → Administration**
 3. Click the **Repo Public Keys** tab
-4. Drag the downloaded `.pub` file into the box
-5. Click **Add key**
+4. Drag the downloaded `.pub` file into the box — it is added automatically
 
 **Or via CLI:**
 ```sh
