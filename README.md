@@ -45,11 +45,11 @@ Packages are signed with a trusted key. You need to install the public key on yo
 
 #### Step 1 — Install the public key (one-time)
 
-**Via LuCI (System → Software → Public Keys tab):**
+**Via LuCI (System → Administration → Repo Public Keys):**
 
 1. Download [`luci-fancontrol-signing.pub`](keys/luci-fancontrol-signing.pub) from this repo
-2. In LuCI go to **System → Software**
-3. Click the **Public Keys** tab
+2. In LuCI go to **System → Administration**
+3. Click the **Repo Public Keys** tab
 4. Click **Upload key** and select the downloaded `.pub` file
 5. Click **Save**
 
@@ -131,10 +131,6 @@ www/
 ### v3.1.3
 - APK packages are now signed — install through LuCI software manager without `--allow-untrusted`
 - See [Installation](#installation) for one-time public key setup
-- Hardware protection: daemon skips critical trip points to prevent accidental thermal shutdown
-- Two-pass trip point write strategy for consistent kernel state
-- Scoped UCI apply — only commits `fancontrol` config, not unrelated staged changes
-- Cross-validation on all temperature fields
 
 ### v3.0.1
 - Raised default fan-off temperature from 50°C to 60°C
